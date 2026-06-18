@@ -330,18 +330,19 @@
   document.querySelectorAll("[data-close]").forEach((btn) =>
     btn.addEventListener("click", () => hideModal($("#" + btn.dataset.close)))
   );
-  [dayModal, eventModal].forEach((m) =>
+  const dataModal = $("#dataModal");
+  [dayModal, eventModal, dataModal].forEach((m) =>
     m.addEventListener("click", (e) => { if (e.target === m) hideModal(m); })
   );
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { hideModal(eventModal); hideModal(dayModal); }
+    if (e.key === "Escape") { hideModal(eventModal); hideModal(dayModal); hideModal(dataModal); }
   });
 
   /* ---- Modal utils ---- */
   function showModal(m) { m.hidden = false; document.body.style.overflow = "hidden"; }
   function hideModal(m) {
     m.hidden = true;
-    if (eventModal.hidden && dayModal.hidden) document.body.style.overflow = "";
+    if (eventModal.hidden && dayModal.hidden && dataModal.hidden) document.body.style.overflow = "";
   }
 
   /* ---- Misc helpers ---- */
@@ -355,7 +356,289 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
+  /* ============================================================
+     Flat-file text database — import (paste / file) & export
+     ============================================================ */
+  const MONTHS = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  // Towns we recognise (seed map + any towns already entered) — used to split
+  // "Title Town" in the loose paste format.
+  function knownTowns() {
+    const set = new Set(Object.keys(TOWN_REGION));
+    events.forEach((e) => { if (e.town) set.add(e.town); });
+    return [...set].sort((a, b) => b.length - a.length);
+  }
+
+  function parseDateField(raw) {
+    const s = (raw || "").trim();
+    if (!s) return null;
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const lower = s.toLowerCase();
+    const dayM = lower.match(/\b(\d{1,2})\b/);
+    if (!dayM) return null;
+    const day = parseInt(dayM[1], 10);
+    if (day < 1 || day > 31) return null;
+    let month = MONTH + 1;                 // default October
+    const monM = lower.match(/[a-z]{3,9}/);
+    if (monM && MONTHS[monM[0].slice(0, 3)]) month = MONTHS[monM[0].slice(0, 3)];
+    let year = YEAR;
+    const yearM = lower.match(/\b(20\d{2})\b/);
+    if (yearM) year = parseInt(yearM[1], 10);
+    return `${year}-${pad(month)}-${pad(day)}`;
+  }
+
+  function parseTimeField(raw) {
+    let s = (raw || "").trim().toLowerCase();
+    if (!s) return "";                     // blank = all day
+    s = s.replace(/\s+/g, "").replace(/:(am|pm)$/, "$1"); // "08:00:am" -> "08:00am"
+    const m = s.match(/^(\d{1,2})(?:[:.](\d{2}))?(am|pm)?$/);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    if (h > 23 || min > 59) return null;
+    if (m[3] === "am" && h === 12) h = 0;
+    else if (m[3] === "pm" && h !== 12) h += 12;
+    return `${pad(h)}:${pad(min)}`;
+  }
+
+  function normStatus(raw) {
+    const s = (raw || "").trim().toLowerCase();
+    if (s.startsWith("pend")) return "Pending";
+    if (s.startsWith("conf")) return "Confirmed";
+    if (s.startsWith("canc")) return "Cancelled";
+    return "";
+  }
+  function normTheme(raw) {
+    const s = (raw || "").trim().toLowerCase();
+    if (!s) return "";
+    const t = OBM_THEMES.find((x) => s.startsWith(x.value.toLowerCase()));
+    return t ? t.value : "";
+  }
+  function normRegion(raw) {
+    const s = (raw || "").trim();
+    if (!s) return "";
+    return REGIONS.find((r) => r.toLowerCase() === s.toLowerCase()) || s;
+  }
+  function normDs(raw) {
+    const s = (raw || "").trim();
+    if (!s) return "";
+    const hit = DS_CATEGORIES.find(
+      (c) => c.value.toLowerCase() === s.toLowerCase() ||
+             c.value.toLowerCase().startsWith(s.toLowerCase())
+    );
+    return hit ? hit.value : s;
+  }
+  function splitTitleTown(text) {
+    const t = text.trim();
+    for (const town of knownTowns()) {
+      const re = new RegExp("\\s+" + town.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "i");
+      if (re.test(t)) return { title: t.replace(re, "").trim(), town };
+    }
+    return { title: t, town: "" };
+  }
+
+  // Parse one line -> {data} | {error} | null (skip)
+  function parseLine(line) {
+    const raw = line.trim();
+    if (!raw || raw.startsWith("#")) return null;
+    let date, time, title, town, region, theme, ds, status;
+
+    if (raw.includes("|")) {
+      const f = raw.split("|").map((x) => x.trim());
+      date = parseDateField(f[0]);
+      time = parseTimeField(f[1] || "");
+      title = (f[2] || "").trim();
+      town = (f[3] || "").trim();
+      region = normRegion(f[4] || "");
+      theme = normTheme(f[5] || "");
+      ds = normDs(f[6] || "");
+      status = normStatus(f[7] || "");
+      if (!date) return { error: "bad or missing date" };
+      if (!title) return { error: "missing title" };
+      if (time === null) return { error: "bad time" };
+    } else {
+      const parts = raw.split(",");
+      if (parts.length < 2) return { error: "unrecognised line" };
+      const tt = splitTitleTown(parts[0]);
+      title = tt.title; town = tt.town;
+      date = parseDateField(parts[1]);
+      let rest = parts.slice(2).join(",");
+      const stM = rest.match(/status\s*:\s*([a-z]+)/i);
+      status = stM ? normStatus(stM[1]) : "";
+      if (stM) rest = rest.replace(stM[0], "");
+      time = parseTimeField(rest);
+      region = ""; theme = ""; ds = "";
+      if (!date) return { error: "bad or missing date" };
+      if (!title) return { error: "missing title" };
+      if (time === null) time = "";        // lenient in loose mode
+    }
+    return { data: { date, time, title, town, region, theme, ds, status } };
+  }
+
+  function applyText(text, replace) {
+    const parsed = [];
+    const errors = [];
+    text.split(/\r?\n/).forEach((ln, i) => {
+      const r = parseLine(ln);
+      if (r === null) return;
+      if (r.error) { errors.push(`Line ${i + 1}: ${r.error}`); return; }
+      parsed.push(r.data);
+    });
+    if (!parsed.length && !replace) return { added: 0, updated: 0, errors, empty: true };
+
+    if (replace) events.length = 0;
+    const keyOf = (d, t) => d + "" + t.trim().toLowerCase();
+    const map = new Map();
+    events.forEach((e) => map.set(keyOf(e.date, e.title), e));
+
+    let added = 0, updated = 0;
+    parsed.forEach((p) => {
+      const ex = map.get(keyOf(p.date, p.title));
+      if (ex) {
+        if (p.time !== "") ex.time = p.time;
+        if (p.town) ex.town = p.town;
+        if (p.region) ex.region = p.region;
+        if (p.theme) ex.obmTheme = p.theme;
+        if (p.ds) ex.dsCategory = p.ds;
+        if (p.status) ex.status = p.status;
+        updated++;
+      } else {
+        const ev = {
+          id: "ev-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+          date: p.date, time: p.time, title: p.title.trim(),
+          town: p.town, region: p.region || TOWN_REGION[p.town] || "",
+          obmTheme: p.theme, dsCategory: p.ds, status: p.status || "Pending",
+        };
+        events.push(ev);
+        map.set(keyOf(ev.date, ev.title), ev);
+        added++;
+      }
+    });
+    save();
+    render();
+    return { added, updated, errors };
+  }
+
+  // Serialise the whole DB to the canonical pipe text (== the flat file).
+  function serializeText(list) {
+    const header = "# OBM 2026 events — DATE | TIME | TITLE | TOWN | REGION | OBM THEME | DS CATEGORY | STATUS";
+    const rows = list
+      .slice()
+      .sort((a, b) => (a.date + (a.time || "99:99")).localeCompare(b.date + (b.time || "99:99")))
+      .map((e) => [e.date, e.time || "", e.title, e.town || "", e.region || "",
+        e.obmTheme || "", e.dsCategory || "", e.status || "Pending"].join(" | "));
+    return [header, ...rows].join("\n") + "\n";
+  }
+
+  function download(filename, text, mime) {
+    const blob = new Blob([text], { type: mime || "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // JSON file? convert to the editor's pipe text; otherwise pass through.
+  function toEditorText(text) {
+    const trimmed = text.trim();
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      try {
+        const data = JSON.parse(trimmed);
+        if (Array.isArray(data)) return serializeText(data.map(normalizeImported));
+      } catch (e) { /* fall through */ }
+    }
+    return text;
+  }
+  function normalizeImported(o) {
+    return {
+      date: o.date, time: o.time || "", title: o.title || "",
+      town: o.town || "", region: o.region || "",
+      obmTheme: o.obmTheme || o.theme || "", dsCategory: o.dsCategory || o.ds || "",
+      status: o.status || "Pending",
+    };
+  }
+
+  function setupDataModule() {
+    const dataText = $("#dataText");
+    const msgEl = $("#dataMsg");
+    const setMsg = (t, kind) => { msgEl.textContent = t; msgEl.className = "data-msg" + (kind ? " " + kind : ""); };
+
+    $("#dataBtn").addEventListener("click", () => {
+      dataText.value = serializeText(events);
+      setMsg("");
+      showModal(dataModal);
+    });
+    $("#loadCurrentBtn").addEventListener("click", () => {
+      dataText.value = serializeText(events);
+      setMsg(`Loaded current data (${events.length} events).`, "ok");
+    });
+    $("#applyTextBtn").addEventListener("click", () => {
+      const replace = $("#replaceAll").checked;
+      if (replace && !confirm("Replace ALL existing events with the contents of the box?")) return;
+      const res = applyText(dataText.value, replace);
+      if (res.empty) { setMsg("No event lines found to apply.", "err"); return; }
+      const head = `Applied: ${res.added} added, ${res.updated} updated.`;
+      if (res.errors.length) setMsg(head + "\nSkipped:\n" + res.errors.join("\n"), "err");
+      else setMsg(head, "ok");
+      dataText.value = serializeText(events);   // reflect canonical state
+    });
+    $("#copyTextBtn").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(dataText.value); setMsg("Copied to clipboard.", "ok"); }
+      catch (e) { dataText.select(); try { document.execCommand("copy"); } catch (_) {} setMsg("Selected — press Cmd/Ctrl+C to copy.", "ok"); }
+    });
+    $("#exportTxtBtn").addEventListener("click", () => download("obm-events.txt", serializeText(events), "text/plain"));
+    $("#exportJsonBtn").addEventListener("click", () => download("obm-events.json", JSON.stringify(events, null, 2), "application/json"));
+    $("#importFileBtn").addEventListener("click", () => $("#importFile").click());
+    $("#importFile").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        dataText.value = toEditorText(String(reader.result || ""));
+        setMsg(`Loaded "${file.name}" into the box. Review, then click Apply.`, "ok");
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    });
+
+    // File System Access API (Chrome/Edge): a real local flat file to open & save.
+    let fileHandle = null;
+    if ("showOpenFilePicker" in window && "showSaveFilePicker" in window) {
+      $("#dataFsRow").hidden = false;
+      $("#openFileBtn").addEventListener("click", async () => {
+        try {
+          const [h] = await window.showOpenFilePicker({
+            types: [{ description: "OBM data", accept: { "text/plain": [".txt"], "application/json": [".json"] } }],
+          });
+          fileHandle = h;
+          dataText.value = toEditorText(await (await h.getFile()).text());
+          $("#fsName").textContent = h.name;
+          setMsg(`Opened "${h.name}". Review, then Apply (tick "Replace all" for a clean load).`, "ok");
+        } catch (err) { if (err.name !== "AbortError") setMsg("Could not open file: " + err.message, "err"); }
+      });
+      $("#saveFileBtn").addEventListener("click", async () => {
+        try {
+          if (!fileHandle) {
+            fileHandle = await window.showSaveFilePicker({
+              suggestedName: "obm-events.txt",
+              types: [{ description: "OBM data", accept: { "text/plain": [".txt"] } }],
+            });
+          }
+          const w = await fileHandle.createWritable();
+          await w.write(serializeText(events));
+          await w.close();
+          $("#fsName").textContent = fileHandle.name;
+          setMsg(`Saved ${events.length} events to "${fileHandle.name}".`, "ok");
+        } catch (err) { if (err.name !== "AbortError") setMsg("Could not save: " + err.message, "err"); }
+      });
+    }
+  }
+
   /* ---- Init ---- */
   populateControls();
+  setupDataModule();
   render();
 })();

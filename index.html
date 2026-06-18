@@ -22,6 +22,7 @@
       </div>
     </div>
     <nav class="header-actions">
+      <button id="dataBtn" class="btn btn-ghost on-dark">Data &amp; import</button>
       <button id="addEventBtn" class="btn btn-accent">+ Add event</button>
     </nav>
   </header>
@@ -153,6 +154,64 @@
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Data / import modal -->
+  <div id="dataModal" class="modal-overlay" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="dataModalTitle">
+      <div class="modal-head">
+        <h2 id="dataModalTitle">Data &amp; import</h2>
+        <button class="modal-close" data-close="dataModal" aria-label="Close">&times;</button>
+      </div>
+      <div class="data-body">
+        <p class="data-help">
+          Paste plain-text events below and click <b>Apply</b>. One event per line. Events are
+          matched by <b>date + title</b>: a matching line <b>updates</b> that event, otherwise it
+          is <b>added</b>. The file you Export/Save is your local flat-file database &mdash; edit it
+          and paste or load it back in any time.
+        </p>
+
+        <details class="data-format">
+          <summary>Accepted text formats &amp; examples</summary>
+          <p><b>Pipe format</b> (this is exactly what Export/Save produces):</p>
+          <pre>DATE | TIME | TITLE | TOWN | REGION | OBM THEME | DS CATEGORY | STATUS
+2026-10-02 | 08:00 | OBM Keynote | Alice Springs | Central | | | Pending</pre>
+          <p><b>Loose format</b> (like the original program list) also works:</p>
+          <pre>OBM Keynote Alice Springs, 2 Oct, 08:00:am Status: Pending</pre>
+          <ul>
+            <li>Leave a field blank between pipes to keep the event's existing value.</li>
+            <li>Dates are October 2026; time accepts <code>8:00am</code>, <code>17:30</code>, <code>5:30pm</code> (blank = all day).</li>
+            <li>Status: Pending, Confirmed or Cancelled. Lines starting with <code>#</code> are ignored.</li>
+          </ul>
+        </details>
+
+        <textarea id="dataText" class="data-text" spellcheck="false"
+          placeholder="Paste events here, then click Apply…"></textarea>
+
+        <div id="dataMsg" class="data-msg" role="status" aria-live="polite"></div>
+
+        <div class="data-actions">
+          <button id="applyTextBtn" class="btn btn-accent">Apply</button>
+          <label class="replace-toggle">
+            <input type="checkbox" id="replaceAll" /> Replace all (clear existing first)
+          </label>
+          <span class="spacer"></span>
+          <button id="loadCurrentBtn" class="btn btn-ghost" title="Fill the box with your current data">Show current data</button>
+          <button id="copyTextBtn" class="btn btn-ghost">Copy</button>
+          <button id="importFileBtn" class="btn btn-ghost">Load file…</button>
+          <button id="exportTxtBtn" class="btn btn-ghost">Export .txt</button>
+          <button id="exportJsonBtn" class="btn btn-ghost">Export .json</button>
+          <input type="file" id="importFile" accept=".txt,.json,text/plain,application/json" hidden />
+        </div>
+
+        <div class="data-fs" id="dataFsRow" hidden>
+          <span class="fs-label">Local file:</span>
+          <button id="openFileBtn" class="btn btn-ghost">Open local file…</button>
+          <button id="saveFileBtn" class="btn btn-ghost">Save to file</button>
+          <span id="fsName" class="fs-name">No file linked</span>
+        </div>
+      </div>
     </div>
   </div>
 

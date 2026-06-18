@@ -156,6 +156,8 @@ select:focus, input:focus {
 .btn-danger:hover { background: #fcebe5; }
 /* In the dark header, the ghost/add button reads on a blue field */
 .site-header .btn-accent { box-shadow: 0 6px 16px rgba(232,85,45,0.35); }
+.btn-ghost.on-dark { color: #fff; border-color: var(--sky-line); }
+.btn-ghost.on-dark:hover { background: rgba(95,160,224,0.22); }
 
 /* ---------- Calendar ---------- */
 .calendar-wrap {
@@ -167,7 +169,7 @@ select:focus, input:focus {
 }
 .weekday-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   background: var(--navy);
   color: var(--sky-soft);
 }
@@ -180,13 +182,15 @@ select:focus, input:focus {
 }
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
   background: var(--line);
 }
 .day-cell {
   background: #fff;
   min-height: 118px;
+  min-width: 0;          /* allow the grid track to shrink below content width */
+  overflow: hidden;      /* clip anything that would push the layout sideways */
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -218,6 +222,8 @@ select:focus, input:focus {
 .chip {
   text-align: left;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: none;
   border-left: 4px solid var(--accent);
   background: #fdeee8;
@@ -234,10 +240,14 @@ select:focus, input:focus {
 .chip .chip-time { font-weight: 700; color: var(--accent-dk); margin-right: 4px; }
 .chip .chip-title {
   font-weight: 500;
-  display: block;
-  white-space: nowrap;
+  /* wrap long titles (up to 2 lines) instead of forcing the layout wider */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .chip.status-Confirmed { border-left-color: var(--sky); background: #e7f1fb; }
 .chip.status-Confirmed .chip-time { color: #2a6bb0; }
@@ -359,6 +369,83 @@ select:focus, input:focus {
 .tag.status-Confirmed { background: #e7f1fb; color: #2a6bb0; }
 .tag.status-Cancelled { background: #eef0f6; color: #6a6f8f; }
 .de-empty { padding: 20px 8px; color: var(--muted); }
+
+/* ---------- Data / import modal ---------- */
+.modal.modal-wide { max-width: 760px; }
+.data-body { padding: 18px 20px 20px; }
+.data-help { margin: 0 0 12px; color: var(--ink-soft); font-size: 0.9rem; }
+.data-help b { color: var(--navy-2); }
+.data-format { margin-bottom: 14px; }
+.data-format summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--navy-2);
+  font-size: 0.88rem;
+}
+.data-format p { margin: 10px 0 4px; font-size: 0.85rem; color: var(--ink-soft); }
+.data-format ul { margin: 6px 0 0; padding-left: 18px; font-size: 0.83rem; color: var(--ink-soft); }
+.data-format pre {
+  background: #f4f6fc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  margin: 0;
+  color: var(--navy-2);
+}
+.data-format code {
+  background: #eef1fb;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.82em;
+}
+.data-text {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid #c9cde0;
+  border-radius: 8px;
+  padding: 12px;
+}
+.data-text:focus { outline: none; border-color: var(--sky); box-shadow: 0 0 0 3px rgba(95,160,224,0.25); }
+.data-msg { min-height: 22px; font-size: 0.85rem; margin: 8px 0; font-weight: 500; }
+.data-msg.ok { color: #1c7a3f; }
+.data-msg.err { color: var(--accent-dk); white-space: pre-line; }
+.data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.data-actions .spacer { flex: 1 1 12px; }
+.data-actions .btn { padding: 8px 13px; font-size: 0.85rem; }
+.replace-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.replace-toggle input { accent-color: var(--accent); }
+.data-fs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.data-fs .fs-label { font-size: 0.82rem; font-weight: 600; color: var(--navy-2); }
+.data-fs .btn { padding: 8px 13px; font-size: 0.85rem; }
+.fs-name { font-size: 0.8rem; color: var(--muted); }
 
 /* ---------- Footer ---------- */
 .site-footer {

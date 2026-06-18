@@ -72,8 +72,15 @@
       obmTheme: "",
       dsCategory: "",
       status: "Pending",
+      source: "import",
     }));
   }
+
+  /* ---- Blocked dates: closed to manual entry via the interface ----
+     (the import tool can still place events on these dates) ---------- */
+  const BLOCKED_DAYS = [11, 12, 13, 14, 15];
+  const BLOCKED_DATES = new Set(BLOCKED_DAYS.map(dateStr));
+  function isBlocked(d) { return BLOCKED_DATES.has(d); }
 
   /* ---- State ---- */
   let events = load();
@@ -178,15 +185,23 @@
       const d = dateStr(day);
       const dayEvents = eventsForDate(d);
       const dow = new Date(YEAR, MONTH, day).getDay();
+      const blocked = isBlocked(d);
       const cell = document.createElement("div");
       cell.className = "day-cell" + (dayEvents.length ? " has-events" : "") +
-        (dow === 0 || dow === 6 ? " weekend" : "");
+        (dow === 0 || dow === 6 ? " weekend" : "") + (blocked ? " blocked" : "");
       cell.dataset.date = d;
 
       const num = document.createElement("div");
       num.className = "day-num";
       num.textContent = day;
       cell.appendChild(num);
+      if (blocked) {
+        const flag = document.createElement("span");
+        flag.className = "blocked-flag";
+        flag.textContent = "Closed";
+        flag.title = "Closed to new entries via the interface";
+        cell.appendChild(flag);
+      }
 
       const shown = dayEvents.slice(0, 3);
       shown.forEach((ev) => cell.appendChild(makeChip(ev)));
@@ -205,7 +220,7 @@
 
   function makeChip(ev) {
     const chip = document.createElement("button");
-    chip.className = "chip status-" + ev.status;
+    chip.className = "chip status-" + ev.status + (ev.source === "manual" ? " manual" : "");
     chip.innerHTML =
       `<span class="chip-time">${ev.time ? fmtTime(ev.time) : "All day"}</span>` +
       `<span class="chip-title">${escapeHtml(ev.title)}</span>`;
@@ -220,12 +235,23 @@
     const list = eventsForDate(d);
     $("#dayModalTitle").textContent = prettyDate(d);
     const wrap = $("#dayEventList");
+    const blocked = isBlocked(d);
     wrap.innerHTML = "";
+    if (blocked) {
+      const note = document.createElement("p");
+      note.className = "day-closed";
+      note.textContent = "This date is closed to new entries through the interface. Events can still be added here via the Data & import tool.";
+      wrap.appendChild(note);
+    }
     if (!list.length) {
-      wrap.innerHTML = `<p class="de-empty">No events on this day${anyFilter() ? " (matching filters)" : ""}. Add one below.</p>`;
+      const p = document.createElement("p");
+      p.className = "de-empty";
+      p.textContent = `No events on this day${anyFilter() ? " (matching filters)" : ""}.` + (blocked ? "" : " Add one below.");
+      wrap.appendChild(p);
     } else {
       list.forEach((ev) => wrap.appendChild(makeDayItem(ev)));
     }
+    $("#addForDayBtn").style.display = blocked ? "none" : "";
     showModal(dayModal);
   }
 
@@ -251,6 +277,7 @@
     const editing = events.find((e) => e.id === id);
     $("#eventModalTitle").textContent = editing ? "Edit event" : "Add event";
     $("#deleteEventBtn").hidden = !editing;
+    $("#eventFormMsg").hidden = true;
 
     $("#eventId").value = editing ? editing.id : "";
     $("#f_title").value = editing ? editing.title : "";
@@ -284,11 +311,21 @@
     };
     if (!data.title || !data.date || !data.region) return;
 
-    if (id) {
-      const ev = events.find((x) => x.id === id);
-      Object.assign(ev, data);
+    const existing = id ? events.find((x) => x.id === id) : null;
+    // Blocked dates are closed to the interface: refuse to add a new event,
+    // or to move an event onto a blocked date it wasn't already on.
+    if (isBlocked(data.date) && !(existing && existing.date === data.date)) {
+      const msg = $("#eventFormMsg");
+      msg.textContent = `${prettyDate(data.date)} is closed to new entries. Use the Data & import tool to add events on this date.`;
+      msg.hidden = false;
+      return;
+    }
+
+    if (existing) {
+      Object.assign(existing, data);
     } else {
       data.id = "ev-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+      data.source = "manual";
       events.push(data);
     }
     save();
@@ -510,6 +547,7 @@
           date: p.date, time: p.time, title: p.title.trim(),
           town: p.town, region: p.region || TOWN_REGION[p.town] || "",
           obmTheme: p.theme, dsCategory: p.ds, status: p.status || "Pending",
+          source: "import",
         };
         events.push(ev);
         map.set(keyOf(ev.date, ev.title), ev);

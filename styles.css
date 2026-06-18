@@ -202,6 +202,32 @@ select:focus, input:focus {
 .day-cell.empty { background: #f5f6fb; cursor: default; }
 .day-cell.empty:hover { background: #f5f6fb; }
 .day-cell.weekend { background: #f8f9fd; }
+
+/* Blocked dates: reversed (dark) colouring — closed to manual entry */
+.day-cell.blocked {
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 7px, transparent 7px 14px),
+    var(--navy);
+  cursor: not-allowed;
+}
+.day-cell.blocked:hover { background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 7px, transparent 7px 14px),
+    #14215f; }
+.day-cell.blocked.has-events { cursor: pointer; }
+.day-cell.blocked .day-num { color: #fff; }
+.day-cell.blocked.has-events .day-num::after { background: #fff; }
+.blocked-flag {
+  align-self: flex-start;
+  margin-top: -2px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--navy-2);
+  background: var(--sky-soft);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
 .day-num {
   font-weight: 600;
   font-size: 0.98rem;
@@ -254,6 +280,18 @@ select:focus, input:focus {
 .chip.status-Cancelled { border-left-color: var(--muted); background: #eef0f6; opacity: .7; }
 .chip.status-Cancelled .chip-title { text-decoration: line-through; }
 .chip.status-Cancelled .chip-time { color: var(--muted); }
+
+/* Manually-added events: dark chip (keeps the status-coloured left border).
+   These rules follow the status rules so the dark background wins. */
+.chip.manual { background: var(--navy-2); color: #fff; }
+.chip.manual:hover { background: #243596; }
+.chip.manual .chip-title { color: #eef1ff; }
+.chip.manual .chip-time { color: #ffd2c4; }
+.chip.manual.status-Confirmed { border-left-color: var(--sky); }
+.chip.manual.status-Confirmed .chip-time { color: var(--sky-soft); }
+.chip.manual.status-Cancelled { border-left-color: var(--muted); opacity: .8; }
+.chip.manual.status-Cancelled .chip-time { color: #c9cde0; }
+
 .more-link {
   font-size: 0.72rem;
   font-weight: 600;
@@ -369,6 +407,28 @@ select:focus, input:focus {
 .tag.status-Confirmed { background: #e7f1fb; color: #2a6bb0; }
 .tag.status-Cancelled { background: #eef0f6; color: #6a6f8f; }
 .de-empty { padding: 20px 8px; color: var(--muted); }
+.day-closed {
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  background: var(--navy);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+/* Inline validation message in the event editor */
+.form-msg {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  background: #fdeee8;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent-dk);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.form-msg[hidden] { display: none; }
 
 /* ---------- Data / import modal ---------- */
 .modal.modal-wide { max-width: 760px; }

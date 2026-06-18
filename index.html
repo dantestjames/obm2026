@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>October Business Month 2026 — Event Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Top brand bar -->
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <span class="brand-o">O</span><span class="brand-b">B</span><span class="brand-m">M</span>
+      </div>
+      <div class="brand-text">
+        <p class="brand-title">October Business Month</p>
+        <p class="brand-sub">Northern Territory &bull; 2026</p>
+      </div>
+    </div>
+    <nav class="header-actions">
+      <button id="addEventBtn" class="btn btn-accent">+ Add event</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="page-intro">
+      <h1>Event Calendar <span class="month-label">October 2026</span></h1>
+      <p class="lede">
+        Click any date to add an event, or click an existing event to view and edit
+        its details &mdash; title, OBM theme, Digital Solutions category, region and town.
+      </p>
+    </section>
+
+    <!-- Filters -->
+    <section class="toolbar" aria-label="Filters">
+      <div class="filter">
+        <label for="filterRegion">Region</label>
+        <select id="filterRegion">
+          <option value="">All regions</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label for="filterCategory">OBM theme</label>
+        <select id="filterCategory">
+          <option value="">All themes</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label for="filterStatus">Status</label>
+        <select id="filterStatus">
+          <option value="">All statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      <button id="resetData" class="btn btn-ghost" title="Restore the original prepopulated events">Reset to default events</button>
+    </section>
+
+    <!-- Calendar -->
+    <section class="calendar-wrap">
+      <div class="weekday-row" aria-hidden="true">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
+        <span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div id="calendar" class="calendar-grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Unofficial planning tool styled after the October Business Month NT brand. Data is stored locally in your browser.</p>
+  </footer>
+
+  <!-- Day modal: list of events for a date -->
+  <div id="dayModal" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dayModalTitle">
+      <div class="modal-head">
+        <h2 id="dayModalTitle">Events</h2>
+        <button class="modal-close" data-close="dayModal" aria-label="Close">&times;</button>
+      </div>
+      <div id="dayEventList" class="day-event-list"></div>
+      <div class="modal-foot">
+        <button id="addForDayBtn" class="btn btn-accent">+ Add event on this day</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event editor modal -->
+  <div id="eventModal" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+      <div class="modal-head">
+        <h2 id="eventModalTitle">Add event</h2>
+        <button class="modal-close" data-close="eventModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="eventForm" class="event-form">
+        <input type="hidden" id="eventId" />
+
+        <div class="field">
+          <label for="f_title">Title <span class="req">*</span></label>
+          <input type="text" id="f_title" required maxlength="160" placeholder="e.g. OBM Keynote" />
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="f_date">Date <span class="req">*</span></label>
+            <input type="date" id="f_date" required min="2026-10-01" max="2026-10-31" value="2026-10-01" />
+          </div>
+          <div class="field">
+            <label for="f_time">Start time</label>
+            <input type="time" id="f_time" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>OBM theme</label>
+          <div id="f_obm_options" class="radio-group"></div>
+        </div>
+
+        <div class="field">
+          <label for="f_ds">Digital Solutions category</label>
+          <select id="f_ds"></select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="f_region">Region <span class="req">*</span></label>
+            <select id="f_region" required></select>
+          </div>
+          <div class="field">
+            <label for="f_town">Town</label>
+            <input type="text" id="f_town" maxlength="80" placeholder="e.g. Katherine" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f_status">Status</label>
+          <select id="f_status">
+            <option value="Pending">Pending</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div class="modal-foot between">
+          <button type="button" id="deleteEventBtn" class="btn btn-danger" hidden>Delete</button>
+          <div class="foot-right">
+            <button type="button" class="btn btn-ghost" data-close="eventModal">Cancel</button>
+            <button type="submit" class="btn btn-accent">Save event</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

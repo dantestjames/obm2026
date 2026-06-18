@@ -19,15 +19,18 @@
   // NT regions (from the "Region" dropdown screenshot)
   const REGIONS = ["Barkly", "Big Rivers", "Central", "East Arnhem", "Top End", "Online"];
 
-  // Digital Solutions categories
+  // Digital Solutions categories (OBM Digital Solutions program streams)
   const DS_CATEGORIES = [
-    "Websites & Online Presence",
-    "Social Media & Marketing",
-    "E-commerce & Online Sales",
-    "Cyber Security",
-    "AI & Automation",
-    "Data & Analytics",
-    "Productivity & Cloud Tools",
+    { value: "Introduction to Digitalising Your Small Business",
+      desc: "Basics of getting your business online, business planning, and foundational digital strategies." },
+    { value: "Social Media, Digital Marketing, and Selling Online",
+      desc: "Guidance on social media strategies, SEO, e-commerce, and digital advertising to reach new customers." },
+    { value: "Using Business Software",
+      desc: "Tips on selecting and integrating software for accounting, inventory, and Customer Relationship Management (CRM)." },
+    { value: "AI and Emerging Technologies",
+      desc: "Utilizing automation and artificial intelligence tools to streamline business operations." },
+    { value: "Cybersecurity and Data Privacy",
+      desc: "Protecting customer data, setting up secure payment systems, and understanding online privacy obligations." },
   ];
 
   // Helper: map a town to its NT region so the seed data is consistent.
@@ -137,7 +140,11 @@
 
     const dsSel = $("#f_ds");
     dsSel.add(new Option("— None —", ""));
-    DS_CATEGORIES.forEach((c) => dsSel.add(new Option(c, c)));
+    DS_CATEGORIES.forEach((c) => {
+      const opt = new Option(c.value, c.value);
+      opt.title = c.desc; // hover description
+      dsSel.add(opt);
+    });
 
     const regSel = $("#f_region");
     regSel.insertBefore(new Option("— Please select —", ""), regSel.firstChild);
